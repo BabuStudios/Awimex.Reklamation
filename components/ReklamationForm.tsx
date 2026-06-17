@@ -116,18 +116,39 @@ export default function ReklamationForm() {
 
   const onSubmit = handleSubmit(async (data) => {
     setSubmitError(null);
+
+    const endpoint = process.env.NEXT_PUBLIC_AUTOMATE_URL;
+    if (!endpoint) {
+      // Misconfiguration: the destination URL isn't defined at build time.
+      console.error(
+        "[Reklamation] NEXT_PUBLIC_AUTOMATE_URL is not set — cannot submit the form."
+      );
+      setSubmitError(
+        "Det gick inte att skicka reklamationen. Försök igen senare."
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const res = await fetch(process.env.NEXT_PUBLIC_AUTOMATE_URL as string, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
       if (!res.ok) {
+        const responseBody = await res.text().catch(() => "");
+        console.error(
+          `[Reklamation] Submit failed: HTTP ${res.status} ${res.statusText}`,
+          responseBody
+        );
         throw new Error(`Request failed with status ${res.status}`);
       }
       setSubmitted(true);
-    } catch {
+    } catch (err) {
+      // A TypeError here usually means the request never completed —
+      // network failure or a blocked CORS preflight.
+      console.error("[Reklamation] Submit error:", err);
       setSubmitError(
         "Det gick inte att skicka reklamationen. Försök igen senare."
       );
