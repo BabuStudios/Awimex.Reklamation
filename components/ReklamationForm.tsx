@@ -80,6 +80,8 @@ export default function ReklamationForm() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -112,10 +114,26 @@ export default function ReklamationForm() {
     setFiles((prev) => prev.filter((_, idx) => idx !== i));
   }, []);
 
-  const onSubmit = handleSubmit(() => {
-    // In production: send form values + files to the backend/API here
-    // before transitioning to the success view.
-    setSubmitted(true);
+  const onSubmit = handleSubmit(async (data) => {
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(process.env.NEXT_PUBLIC_AUTOMATE_URL as string, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        throw new Error(`Request failed with status ${res.status}`);
+      }
+      setSubmitted(true);
+    } catch {
+      setSubmitError(
+        "Det gick inte att skicka reklamationen. Försök igen senare."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   });
 
   if (submitted) {
@@ -540,9 +558,26 @@ export default function ReklamationForm() {
               <span style={{ color: "#cc0000" }}>*</span> Obligatoriska fält
             </p>
 
-            <button type="submit" className="submit-button">
-              Skicka reklamation
-            </button>
+            <div style={{ textAlign: "right" }}>
+              {submitError && (
+                <p
+                  style={{
+                    margin: "0 0 10px",
+                    fontSize: 12,
+                    color: "#cc0000",
+                  }}
+                >
+                  {submitError}
+                </p>
+              )}
+              <button
+                type="submit"
+                className="submit-button"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Skickar..." : "Skicka reklamation"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
